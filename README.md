@@ -12,6 +12,7 @@
 <p><span style="font-size: 18px;">2013</span></p>
 <p><span style="font-size: 18px;">11.22</span></p>
 <p><span style="font-size: 18px;">　　-increased the number of command lines supprot from only one to a&nbsp;macro definition MAXCOMMAND.</span></p>
+<p><span style="font-size: 18px;">　　-support new format in wmakefile, there can be any number of space between the ':' in a dependency line.</span></p>
 <p>&nbsp;</p>
 <p><span style="font-size: 18px;">11.18</span></p>
 <p><span style="font-size: 18px;">　　-first version.</span></p>

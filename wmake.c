@@ -127,106 +127,99 @@ int readfile(char *file)
             fgets(line,MAXLINE,fp);
         else
             strncpy(line,nextline,MAXLINE);
-        if(strcmp(line,"\n")!=0 && !feof(fp) && !(line[0] == ' '))
+        if(strcmp(line,"\n")!=0 && !feof(fp) && (line[0] != ' '))
         {
-            char *p = strtok(line,":");
-            if(p[strlen(p)-1] == ' ') //dependency line
-            {
-                char *tfilename = malloc(sizeof(char) * (strlen(p)+1));
-                strcpy(tfilename,p);
-                tfilename[strlen(tfilename) -1] = '\0';
-				//printf("%s\n",tfilename);
+            char *p = strtok(line,": ");
+            char *tfilename = malloc(sizeof(char) * (strlen(p)+1));
+            strcpy(tfilename,p);
+
+			//printf("%s\n",tfilename);
                 
-                //process next line(s)
-                char **tcommands;
-                tcommands = malloc(sizeof(char*) *MAXCOMMAND);
-                int i;
-                for(i=0;i<MAXCOMMAND;i++)
+            //process next line(s)
+            char **tcommands;
+            tcommands = malloc(sizeof(char*) *MAXCOMMAND);
+            int i;
+            for(i=0;i<MAXCOMMAND;i++)
+            {
+                fgets(nextline,MAXLINE,fp);
+                if(nextline[0] != '\t' || feof(fp))
                 {
-                    fgets(nextline,MAXLINE,fp);
-                    if(nextline[0] != '\t' || feof(fp))
-                    {
-                        pre_read = 1;
-                        break;
-                    }
-
-                    tcommands[i] = malloc(sizeof(char) * (strlen(nextline)+1));
-                    strcpy(tcommands[i],nextline);
+                    pre_read = 1;
+                    break;
                 }
-                tcommands[i] = NULL;
-
-                if(hmap_contain(hptr,tfilename)) 
+                tcommands[i] = malloc(sizeof(char) * (strlen(nextline)+1));
+                strcpy(tcommands[i],nextline);
+            }
+            tcommands[i] = NULL;
+            if(hmap_contain(hptr,tfilename)) 
+            {
+                vertex_s *vtemp = hmap_get(hptr,tfilename);
+                if(vtemp->isbase == 1)
                 {
-                    vertex_s *vtemp = hmap_get(hptr,tfilename);
-                    if(vtemp->isbase == 1)
-                    {
-                        vtemp->isbase = 0;
-                        vtemp->command = tcommands;
-                    }
-                    else
-                    {
-                        printf("[error]the same filename:%s\n",tfilename);
-                        exit(0);
-                    }
+                    vtemp->isbase = 0;
+                    vtemp->command = tcommands;
                 }
                 else
                 {
-                    vertex_s *vtemp = malloc(sizeof(vertex_s));
-                    vtemp->filename = tfilename;
-                    vtemp->isbase = 0;
-                    vtemp->command = tcommands;
-                    vtemp->adj = NULL;
-                    hmap_put(hptr,tfilename,vtemp);
+                    printf("[error]the same filename:%s\n",tfilename);
+                    exit(0);
                 }
+            }
+            else
+            {
+                vertex_s *vtemp = malloc(sizeof(vertex_s));
+                vtemp->filename = tfilename;
+                vtemp->isbase = 0;
+                vtemp->command = tcommands;
+                vtemp->adj = NULL;
+                hmap_put(hptr,tfilename,vtemp);
+            }
 
-                //process dependency
-
-                vertex_s *vptr = hmap_get(hptr,tfilename);
-                if(hptr->default_node == NULL)
-                    hmap_set_default_node(hptr,(void*)vptr);
-                while( (p=strtok(NULL," ")) != NULL && *p!= '\n')
+            //process dependency
+            vertex_s *vptr = hmap_get(hptr,tfilename);
+            if(hptr->default_node == NULL)
+                hmap_set_default_node(hptr,(void*)vptr);
+            while( (p=strtok(NULL," :\n")) != NULL)
+            {
+                vertex_s* vtemp;
+                adjlist_s *node;
+                char *strtemp = NULL;
+                char *stemp;
+                if(p[strlen(p)-1] == '\n')
                 {
-                    vertex_s* vtemp;
-                    adjlist_s *node;
-                    char *strtemp = NULL;
-                    char *stemp;
-                    if(p[strlen(p)-1] == '\n')
-                    {
-                        char *strtemp = malloc(sizeof(char) * (strlen(p)+1));
-                        strcpy(strtemp,p);
-                        strtemp[strlen(strtemp)-1] = '\0';
-                        p = strtemp;
-                    }
-
-                    if(!hmap_contain(hptr,p))
-                    {
-                        stemp = malloc(sizeof(char) *(strlen(p) +1 ));
-                        strcpy(stemp,p);
-                        vtemp = malloc(sizeof(vertex_s));
-                        vtemp->filename = stemp;
-                        vtemp->isbase = 1;
-                        vtemp->command = NULL;
-                        vtemp->adj = NULL;
-                        hmap_put(hptr,stemp,vtemp);
-                    }
-                    vtemp = hmap_get(hptr,p);
-                    node = malloc(sizeof(adjlist_s));
-                    node->v = vtemp;
-                    node->next = NULL;
-                    if(vptr->adj == NULL)
-                    {
-                        vptr->adj = node;
-                    }
-                    else
-                    {
-                        adjlist_s* t_vptr = vptr->adj;
-                        while(t_vptr->next != NULL)
-                            t_vptr = t_vptr->next;
-                        t_vptr->next = node;
-
-                    }
-                    free(strtemp);
+                    strtemp = malloc(sizeof(char) * (strlen(p)+1));
+                    strcpy(strtemp,p);
+                    strtemp[strlen(strtemp)-1] = '\0';
+                    p = strtemp;
                 }
+
+                if(!hmap_contain(hptr,p))
+                {
+                    stemp = malloc(sizeof(char) *(strlen(p) +1 ));
+                    strcpy(stemp,p);
+                    vtemp = malloc(sizeof(vertex_s));
+                    vtemp->filename = stemp;
+                    vtemp->isbase = 1;
+                    vtemp->command = NULL;
+                    vtemp->adj = NULL;
+                    hmap_put(hptr,stemp,vtemp);
+                }
+                vtemp = hmap_get(hptr,p);
+                node = malloc(sizeof(adjlist_s));
+                node->v = vtemp;
+                node->next = NULL;
+                if(vptr->adj == NULL)
+                {
+                    vptr->adj = node;
+                }
+                else
+                {
+                    adjlist_s* t_vptr = vptr->adj;
+                    while(t_vptr->next != NULL)
+                        t_vptr = t_vptr->next;
+                    t_vptr->next = node;
+                }
+                free(strtemp);
             }
         }
         else 

@@ -8,6 +8,7 @@
 #include "hashmap.h"
 
 #define MAXLINE 4096
+#define MAXCOMMAND 20
 
 #ifndef STRUCT_VERTEX_T
 #define STRUCT_VERTEX_T
@@ -16,7 +17,7 @@
 #define BLACK 2
 struct vertex_t{
     char*             filename;
-    char*             command;
+    char**            command;
     time_t            timestamp;
     int               isbase;
 	int               color;

@@ -6,7 +6,13 @@ HMAP* hptr = NULL;
 void free_vertex_s(HNODE* node)
 {
     free(((vertex_s*)(node->val))->filename);
-    free(((vertex_s*)(node->val))->command);
+    if(((vertex_s*)(node->val))->command != NULL)
+    {
+        int i;
+        for(i=0;(((vertex_s*)(node->val))->command)[i]!= NULL && i<MAXCOMMAND;i++)
+            free((((vertex_s*)(node->val))->command)[i]);
+        free(((vertex_s*)(node->val))->command);
+    }
     adjlist_s *p,*pnext;
     p = ((vertex_s*)(node->val))->adj;
     pnext = p;
@@ -93,7 +99,12 @@ void show_conncetion(void *v)
         printf(" %s %d[%ld]",p->v->filename,p->v->isbase,p->v->timestamp);
         p = p->next;
     }
-    printf("\n%s\n",((vertex_s*)v)->command);
+    printf("\n");
+    if(((vertex_s*)v)->isbase)
+  	    return;
+    int i;
+    for(i=0; (((vertex_s*)v)->command[i]) !=NULL;i++)
+        printf("%s",((vertex_s*)v)->command[i]);
 }
 
 
@@ -101,6 +112,7 @@ int readfile(char *file)
 {
     FILE *fp;
     char line[MAXLINE],nextline[MAXLINE];
+    int pre_read = 0;
     fp = fopen(file,"r");
     if(fp == NULL)
     {
@@ -111,26 +123,45 @@ int readfile(char *file)
     hptr = hmap_create(HASHMAP_DEFAULT_SIZE,HASHMAP_DEFAULT_FACTOR,NULL,free_vertex_s);
     //line process
     do {
-        fgets(line,MAXLINE,fp);
+        if(pre_read == 0)
+            fgets(line,MAXLINE,fp);
+        else
+            strncpy(line,nextline,MAXLINE);
         if(strcmp(line,"\n")!=0 && !feof(fp) && !(line[0] == ' '))
         {
             char *p = strtok(line,":");
             if(p[strlen(p)-1] == ' ') //dependency line
             {
-                fgets(nextline,MAXLINE,fp);
                 char *tfilename = malloc(sizeof(char) * (strlen(p)+1));
-                char *tcommand = malloc(sizeof(char) * (strlen(nextline)+1));
                 strcpy(tfilename,p);
-                strcpy(tcommand,nextline);
                 tfilename[strlen(tfilename) -1] = '\0';
 				//printf("%s\n",tfilename);
+                
+                //process next line(s)
+                char **tcommands;
+                tcommands = malloc(sizeof(char*) *MAXCOMMAND);
+                int i;
+                for(i=0;i<MAXCOMMAND;i++)
+                {
+                    fgets(nextline,MAXLINE,fp);
+                    if(nextline[0] != '\t' || feof(fp))
+                    {
+                        pre_read = 1;
+                        break;
+                    }
+
+                    tcommands[i] = malloc(sizeof(char) * (strlen(nextline)+1));
+                    strcpy(tcommands[i],nextline);
+                }
+                tcommands[i] = NULL;
+
                 if(hmap_contain(hptr,tfilename)) 
                 {
                     vertex_s *vtemp = hmap_get(hptr,tfilename);
                     if(vtemp->isbase == 1)
                     {
                         vtemp->isbase = 0;
-                        vtemp->command = tcommand;
+                        vtemp->command = tcommands;
                     }
                     else
                     {
@@ -143,12 +174,13 @@ int readfile(char *file)
                     vertex_s *vtemp = malloc(sizeof(vertex_s));
                     vtemp->filename = tfilename;
                     vtemp->isbase = 0;
-                    vtemp->command = tcommand;
+                    vtemp->command = tcommands;
                     vtemp->adj = NULL;
                     hmap_put(hptr,tfilename,vtemp);
                 }
 
                 //process dependency
+
                 vertex_s *vptr = hmap_get(hptr,tfilename);
                 if(hptr->default_node == NULL)
                     hmap_set_default_node(hptr,(void*)vptr);
@@ -197,10 +229,14 @@ int readfile(char *file)
                 }
             }
         }
+        else 
+            pre_read = 0;
     } while(!feof(fp));
 
     hmap_traverse(hptr,set_ts,VAL);
-    //hmap_traverse(hptr,show_conncetion,VAL);
+#ifdef DEBUG
+    hmap_traverse(hptr,show_conncetion,VAL);
+#endif
     fclose(fp);
     return 0;
 }
@@ -247,13 +283,21 @@ int wmake_visit(vertex_s *node) //dfs
     }
     if(maxsucstamp > node->timestamp)
     {
-        execute_command(node->command);
+        int i;
+        for(i=0;(node->command)[i]!=NULL;i++)
+        {
+            execute_command((node->command)[i]);
+        }
         node->timestamp = GetModifiedTimestamp(node->filename);
     }
     else if(maxsucstamp == node->timestamp && node->timestamp == 0)
     //no dependency line : clean,etc
     {
-        execute_command(node->command);
+        int i;
+        for(i=0;(node->command)[i]!=NULL;i++)
+        {
+            execute_command((node->command)[i]);
+        }
     }
     //else:base file
     node->color = BLACK;

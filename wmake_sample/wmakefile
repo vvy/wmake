@@ -1,0 +1,9 @@
+total : 1.o 2.c 2.h 1.h
+	gcc 1.o 2.c -o total
+
+1.o : 1.h 1.c hello.c
+	gcc -c 1.c -o 1.o
+	gcc hello.c -o hello
+
+clean :
+	rm -f *.o total
